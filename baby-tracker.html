@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Baby Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Nunito+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FDF8F4;
+    --card: #FFFFFF;
+    --accent1: #F4845F;
+    --accent2: #7EC8C8;
+    --accent3: #F9C74F;
+    --accent4: #90BE6D;
+    --text: #2D2A26;
+    --muted: #9B8E84;
+    --border: #EDE5DE;
+    --radius: 20px;
+    --shadow: 0 4px 20px rgba(0,0,0,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Nunito Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; max-width: 430px; margin: 0 auto; }
+
+  /* Header */
+  .header { padding: 52px 20px 16px; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+  .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .app-title { font-family: 'Nunito', sans-serif; font-size: 22px; font-weight: 800; color: var(--text); }
+  .baby-name { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .gcal-badge { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; border: 1.5px solid; cursor: pointer; transition: all 0.2s; }
+  .gcal-badge.connected { background: #E8F5E9; color: #2E7D32; border-color: #81C784; }
+  .gcal-badge.disconnected { background: #FFF3E0; color: #E65100; border-color: #FFB74D; }
+
+  /* Tab bar */
+  .tabs { display: flex; padding: 0 20px; gap: 6px; margin-top: 14px; }
+  .tab { flex: 1; padding: 8px 4px; text-align: center; font-size: 12px; font-weight: 700; border-radius: 12px; cursor: pointer; transition: all 0.2s; color: var(--muted); background: transparent; border: none; font-family: 'Nunito', sans-serif; }
+  .tab.active { background: var(--text); color: white; }
+
+  /* Main content */
+  .content { padding: 20px; }
+
+  /* Quick log buttons */
+  .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .quick-btn { background: var(--card); border: none; border-radius: var(--radius); padding: 20px 16px; cursor: pointer; text-align: left; box-shadow: var(--shadow); transition: transform 0.15s, box-shadow 0.15s; position: relative; overflow: hidden; }
+  .quick-btn:active { transform: scale(0.96); box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+  .quick-btn .icon { font-size: 32px; display: block; margin-bottom: 10px; }
+  .quick-btn .label { font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800; color: var(--text); display: block; }
+  .quick-btn .sublabel { font-size: 11px; color: var(--muted); display: block; margin-top: 2px; font-weight: 600; }
+  .quick-btn .accent-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; }
+  .btn-feed .accent-bar { background: var(--accent1); }
+  .btn-sleep .accent-bar { background: var(--accent2); }
+  .btn-diaper .accent-bar { background: var(--accent3); }
+  .btn-pump .accent-bar { background: var(--accent4); }
+  .btn-feed { border-left: 4px solid var(--accent1); }
+  .btn-sleep { border-left: 4px solid var(--accent2); }
+  .btn-diaper { border-left: 4px solid var(--accent3); }
+  .btn-pump { border-left: 4px solid var(--accent4); }
+
+  /* Active sleep timer */
+  .sleep-timer { background: var(--accent2); color: white; border-radius: var(--radius); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; display: none; }
+  .sleep-timer.visible { display: flex; }
+  .sleep-timer .timer-label { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px; }
+  .sleep-timer .timer-val { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 24px; letter-spacing: 1px; }
+  .sleep-timer .end-btn { background: white; color: var(--accent2); border: none; border-radius: 12px; padding: 8px 16px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13px; cursor: pointer; }
+
+  /* Stats row */
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
+  .stat-card { background: var(--card); border-radius: 16px; padding: 14px 12px; text-align: center; box-shadow: var(--shadow); }
+  .stat-val { font-family: 'Nunito', sans-serif; font-size: 22px; font-weight: 800; color: var(--text); }
+  .stat-lbl { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+  /* Section title */
+  .section-title { font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 12px; }
+
+  /* Log entries */
+  .log-list { display: flex; flex-direction: column; gap: 8px; }
+  .log-entry { background: var(--card); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow); animation: slideIn 0.3s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  .log-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dot-feed { background: var(--accent1); }
+  .dot-sleep { background: var(--accent2); }
+  .dot-diaper { background: var(--accent3); }
+  .dot-pump { background: var(--accent4); }
+  .log-info { flex: 1; }
+  .log-type { font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 14px; color: var(--text); }
+  .log-detail { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 1px; }
+  .log-time { font-size: 12px; color: var(--muted); font-weight: 700; text-align: right; flex-shrink: 0; }
+  .gcal-icon { width: 14px; height: 14px; margin-left: 4px; opacity: 0.5; vertical-align: middle; }
+  .synced .gcal-icon { opacity: 1; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .empty-state .empty-icon { font-size: 40px; margin-bottom: 10px; }
+  .empty-state p { font-size: 13px; font-weight: 600; line-height: 1.6; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--card); border-radius: 28px 28px 0 0; padding: 28px 24px 40px; width: 100%; max-width: 430px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-family: 'Nunito', sans-serif; font-size: 20px; font-weight: 800; margin-bottom: 20px; }
+  .modal-row { margin-bottom: 16px; }
+  .modal-label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .chip-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { padding: 8px 16px; border-radius: 20px; border: 1.5px solid var(--border); font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s; background: var(--bg); color: var(--muted); }
+  .chip.selected { border-color: var(--accent1); background: #FFF0EB; color: var(--accent1); }
+  .chip-sleep.selected { border-color: var(--accent2); background: #E8F8F8; color: var(--accent2); }
+  .chip-diaper.selected { border-color: var(--accent3); background: #FFF9E6; color: #B8860B; }
+  .notes-input { width: 100%; border: 1.5px solid var(--border); border-radius: 14px; padding: 12px 14px; font-family: 'Nunito Sans', sans-serif; font-size: 14px; background: var(--bg); color: var(--text); resize: none; outline: none; }
+  .notes-input:focus { border-color: var(--accent1); }
+  .save-btn { width: 100%; padding: 16px; background: var(--text); color: white; border: none; border-radius: 16px; font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 800; cursor: pointer; margin-top: 8px; transition: transform 0.15s; }
+  .save-btn:active { transform: scale(0.98); }
+
+  /* Insights tab */
+  .insight-card { background: var(--card); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); margin-bottom: 12px; }
+  .insight-label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .insight-val { font-family: 'Nunito', sans-serif; font-size: 26px; font-weight: 800; color: var(--text); }
+  .insight-sub { font-size: 13px; color: var(--muted); font-weight: 600; margin-top: 4px; }
+  .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 60px; margin-top: 12px; }
+  .bar { flex: 1; border-radius: 6px 6px 0 0; background: var(--accent1); opacity: 0.6; transition: opacity 0.2s; min-height: 4px; }
+  .bar.active { opacity: 1; }
+  .bar-lbl { font-size: 10px; color: var(--muted); text-align: center; margin-top: 4px; font-weight: 700; }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; }
+
+  /* Settings tab */
+  .settings-section { margin-bottom: 24px; }
+  .settings-row { background: var(--card); border-radius: 16px; padding: 16px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; box-shadow: var(--shadow); }
+  .settings-row-info .s-title { font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 14px; }
+  .settings-row-info .s-sub { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+  .toggle { width: 44px; height: 26px; background: var(--border); border-radius: 13px; position: relative; cursor: pointer; transition: background 0.2s; border: none; flex-shrink: 0; }
+  .toggle.on { background: var(--accent4); }
+  .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: white; transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+  .toggle.on::after { transform: translateX(18px); }
+  .connect-btn { padding: 8px 16px; border-radius: 12px; border: 1.5px solid var(--accent2); background: transparent; color: var(--accent2); font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; }
+  .connect-btn.connected-btn { background: #E8F8F8; }
+  .cozyla-note { background: #E8F8F8; border-radius: 14px; padding: 14px 16px; font-size: 12px; color: #2E6B6B; font-weight: 600; line-height: 1.6; border-left: 3px solid var(--accent2); }
+
+  .toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--text); color: white; padding: 10px 20px; border-radius: 20px; font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 13px; opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; z-index: 300; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Bottom nav */
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: var(--card); border-top: 1px solid var(--border); display: flex; padding: 10px 0 24px; z-index: 100; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 6px 0; border: none; background: none; color: var(--muted); font-family: 'Nunito', sans-serif; font-size: 10px; font-weight: 700; transition: color 0.2s; }
+  .nav-item.active { color: var(--text); }
+  .nav-icon { font-size: 22px; }
+  .content-wrap { padding-bottom: 90px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="app-title">Baby Tracker</div>
+      <div class="baby-name" id="babyNameDisplay">Your baby · 2 months</div>
+    </div>
+    <div class="gcal-badge disconnected" id="gcalBadge" onclick="toggleGcal()">
+      <span id="gcalDot">●</span>
+      <span id="gcalText">Sync Calendar</span>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('log', this)">Today</button>
+    <button class="tab" onclick="showTab('insights', this)">Insights</button>
+    <button class="tab" onclick="showTab('settings', this)">Settings</button>
+  </div>
+</div>
+
+<div class="content-wrap">
+
+<!-- TODAY TAB -->
+<div id="tab-log" class="content">
+
+  <div class="sleep-timer" id="sleepTimer">
+    <div>
+      <div class="sleep-timer-label" style="font-size:12px;font-weight:700;opacity:0.85;margin-bottom:2px;">Sleeping now</div>
+      <div class="timer-val" id="timerVal">00:00</div>
+    </div>
+    <button class="end-btn" onclick="endSleep()">Wake up ☀️</button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-val" id="feedCount">0</div>
+      <div class="stat-lbl">Feeds</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="sleepTotal">0h</div>
+      <div class="stat-lbl">Sleep</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="diaperCount">0</div>
+      <div class="stat-lbl">Diapers</div>
+    </div>
+  </div>
+
+  <div class="quick-grid">
+    <button class="quick-btn btn-feed" onclick="openModal('feed')">
+      <span class="icon">🍼</span>
+      <span class="label">Feed</span>
+      <span class="sublabel" id="lastFeed">Tap to log</span>
+      <div class="accent-bar"></div>
+    </button>
+    <button class="quick-btn btn-sleep" onclick="openModal('sleep')">
+      <span class="icon">😴</span>
+      <span class="label">Sleep</span>
+      <span class="sublabel" id="lastSleep">Tap to log</span>
+      <div class="accent-bar"></div>
+    </button>
+    <button class="quick-btn btn-diaper" onclick="openModal('diaper')">
+      <span class="icon">👶</span>
+      <span class="label">Diaper</span>
+      <span class="sublabel" id="lastDiaper">Tap to log</span>
+      <div class="accent-bar"></div>
+    </button>
+    <button class="quick-btn btn-pump" onclick="openModal('pump')">
+      <span class="icon">🤱</span>
+      <span class="label">Pump</span>
+      <span class="sublabel" id="lastPump">Tap to log</span>
+      <div class="accent-bar"></div>
+    </button>
+  </div>
+
+  <div class="section-title">Today's log</div>
+  <div class="log-list" id="logList">
+    <div class="empty-state">
+      <div class="empty-icon">🌟</div>
+      <p>No entries yet today.<br>Tap a button above to log!</p>
+    </div>
+  </div>
+</div>
+
+<!-- INSIGHTS TAB -->
+<div id="tab-insights" class="content" style="display:none">
+  <div class="insight-card">
+    <div class="insight-label">Average between feeds</div>
+    <div class="insight-val" id="avgFeedGap">—</div>
+    <div class="insight-sub">Based on today's logs</div>
+  </div>
+  <div class="insight-card">
+    <div class="insight-label">Feeds today by hour</div>
+    <div class="bar-chart" id="feedBarChart"></div>
+    <div style="display:flex;gap:6px;" id="feedBarLabels"></div>
+  </div>
+  <div class="insight-card">
+    <div class="insight-label">Total sleep today</div>
+    <div class="insight-val" id="totalSleepInsight">0 hr 0 min</div>
+    <div class="insight-sub" id="sleepInsightSub">Keep logging to see patterns</div>
+  </div>
+  <div class="insight-card">
+    <div class="insight-label">Next feed prediction</div>
+    <div class="insight-val" id="nextFeedPred">—</div>
+    <div class="insight-sub">Based on average interval</div>
+  </div>
+</div>
+
+<!-- SETTINGS TAB -->
+<div id="tab-settings" class="content" style="display:none">
+  <div class="settings-section">
+    <div class="section-title">Baby info</div>
+    <div class="settings-row">
+      <div class="settings-row-info">
+        <div class="s-title">Baby's name</div>
+        <div class="s-sub"><input id="babyNameInput" value="Baby" style="border:none;background:transparent;font-family:'Nunito Sans',sans-serif;font-size:12px;color:#9B8E84;font-weight:600;width:120px;outline:none;" onchange="saveBabyName(this.value)"></div>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-info">
+        <div class="s-title">Feed reminder</div>
+        <div class="s-sub">Notify after 3 hours</div>
+      </div>
+      <button class="toggle on" id="reminderToggle" onclick="this.classList.toggle('on')"></button>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-info">
+        <div class="s-title">Nighttime mode</div>
+        <div class="s-sub">Dim screen 9pm–6am</div>
+      </div>
+      <button class="toggle" id="nightToggle" onclick="this.classList.toggle('on')"></button>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="section-title">Connections</div>
+    <div class="settings-row">
+      <div class="settings-row-info">
+        <div class="s-title">Google Calendar</div>
+        <div class="s-sub" id="gcalSettingSub">Log events to calendar</div>
+      </div>
+      <button class="connect-btn" id="gcalConnectBtn" onclick="toggleGcal()">Connect</button>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-info">
+        <div class="s-title">Cozyla+ monitor</div>
+        <div class="s-sub">Auto-log sleep from monitor</div>
+      </div>
+      <button class="connect-btn" onclick="showToast('Cozyla+ API coming soon!')">Setup</button>
+    </div>
+    <div class="cozyla-note">
+      💡 Once Cozyla+ is connected, sleep events will be auto-detected and logged without tapping — your wife won't need to do anything!
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="section-title">Data</div>
+    <div class="settings-row">
+      <div class="settings-row-info">
+        <div class="s-title">Export log</div>
+        <div class="s-sub">Download as CSV</div>
+      </div>
+      <button class="connect-btn" onclick="exportCSV()">Export</button>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-info">
+        <div class="s-title">Clear today's log</div>
+        <div class="s-sub" style="color:#E24B4A;">Cannot be undone</div>
+      </div>
+      <button class="connect-btn" style="border-color:#E24B4A;color:#E24B4A;" onclick="clearLog()">Clear</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- end content-wrap -->
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="showTab('log', null, this)">
+    <span class="nav-icon">📋</span>Today
+  </button>
+  <button class="nav-item" onclick="showTab('insights', null, this)">
+    <span class="nav-icon">📊</span>Insights
+  </button>
+  <button class="nav-item" onclick="showTab('settings', null, this)">
+    <span class="nav-icon">⚙️</span>Settings
+  </button>
+</nav>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalIfOutside(event)">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">Log Feed</div>
+    <div id="modalBody"></div>
+    <button class="save-btn" id="saveBtn" onclick="saveEntry()">Save & sync ✓</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let entries = JSON.parse(localStorage.getItem('babyEntries') || '[]');
+let gcalConnected = localStorage.getItem('gcalConnected') === 'true';
+let babyName = localStorage.getItem('babyName') || 'Baby';
+let currentModal = null;
+let sleepStartTime = null;
+let sleepInterval = null;
+
+const GCAL_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID';
+
+function init() {
+  document.getElementById('babyNameInput').value = babyName;
+  document.getElementById('babyNameDisplay').textContent = babyName + ' · 2 months';
+  updateGcalUI();
+  renderLog();
+  updateStats();
+}
+
+function saveBabyName(val) {
+  babyName = val.trim() || 'Baby';
+  localStorage.setItem('babyName', babyName);
+  document.getElementById('babyNameDisplay').textContent = babyName + ' · 2 months';
+}
+
+function showTab(name, tabEl, navEl) {
+  ['log','insights','settings'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t === name ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
+  if (tabEl) tabEl.classList.add('active');
+  if (navEl) navEl.classList.add('active');
+  if (name === 'insights') updateInsights();
+}
+
+function formatTime(date) {
+  return date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+function formatDuration(ms) {
+  const m = Math.round(ms/60000);
+  if (m < 60) return m + 'min';
+  return Math.floor(m/60) + 'h ' + (m%60) + 'm';
+}
+
+function openModal(type) {
+  currentModal = type;
+  const overlay = document.getElementById('modalOverlay');
+  const titles = {feed:'Log feed 🍼', sleep:'Log sleep 😴', diaper:'Log diaper 👶', pump:'Log pump 🤱'};
+  document.getElementById('modalTitle').textContent = titles[type];
+
+  let body = '';
+  if (type === 'feed') {
+    body = `
+      <div class="modal-row">
+        <div class="modal-label">Feed type</div>
+        <div class="chip-group">
+          <div class="chip selected" onclick="selectChip(this,'feedType')">Breast</div>
+          <div class="chip" onclick="selectChip(this,'feedType')">Formula</div>
+          <div class="chip" onclick="selectChip(this,'feedType')">Both</div>
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-label">Duration</div>
+        <div class="chip-group">
+          <div class="chip selected" onclick="selectChip(this,'feedDur')">5 min</div>
+          <div class="chip" onclick="selectChip(this,'feedDur')">10 min</div>
+          <div class="chip" onclick="selectChip(this,'feedDur')">15 min</div>
+          <div class="chip" onclick="selectChip(this,'feedDur')">20+ min</div>
+        </div>
+      </div>
+    `;
+  } else if (type === 'sleep') {
+    body = `
+      <div class="modal-row">
+        <div class="modal-label">Sleep type</div>
+        <div class="chip-group">
+          <div class="chip chip-sleep selected" onclick="selectChip(this,'sleepType')">Start now</div>
+          <div class="chip chip-sleep" onclick="selectChip(this,'sleepType')">Log past sleep</div>
+        </div>
+      </div>
+      <div class="modal-row" id="pastSleepRow" style="display:none">
+        <div class="modal-label">Duration</div>
+        <div class="chip-group">
+          <div class="chip chip-sleep" onclick="selectChip(this,'sleepDur')">30 min</div>
+          <div class="chip chip-sleep" onclick="selectChip(this,'sleepDur')">1 hour</div>
+          <div class="chip chip-sleep" onclick="selectChip(this,'sleepDur')">2 hours</div>
+          <div class="chip chip-sleep" onclick="selectChip(this,'sleepDur')">3+ hours</div>
+        </div>
+      </div>
+    `;
+  } else if (type === 'diaper') {
+    body = `
+      <div class="modal-row">
+        <div class="modal-label">Type</div>
+        <div class="chip-group">
+          <div class="chip chip-diaper selected" onclick="selectChip(this,'diaperType')">Wet</div>
+          <div class="chip chip-diaper" onclick="selectChip(this,'diaperType')">Dirty</div>
+          <div class="chip chip-diaper" onclick="selectChip(this,'diaperType')">Both</div>
+          <div class="chip chip-diaper" onclick="selectChip(this,'diaperType')">Dry</div>
+        </div>
+      </div>
+    `;
+  } else if (type === 'pump') {
+    body = `
+      <div class="modal-row">
+        <div class="modal-label">Amount (oz)</div>
+        <div class="chip-group">
+          <div class="chip selected" onclick="selectChip(this,'pumpAmt')">1–2 oz</div>
+          <div class="chip" onclick="selectChip(this,'pumpAmt')">3–4 oz</div>
+          <div class="chip" onclick="selectChip(this,'pumpAmt')">5+ oz</div>
+        </div>
+      </div>
+    `;
+  }
+  body += `
+    <div class="modal-row">
+      <div class="modal-label">Notes (optional)</div>
+      <textarea class="notes-input" id="entryNotes" rows="2" placeholder="Any notes..."></textarea>
+    </div>
+  `;
+  document.getElementById('modalBody').innerHTML = body;
+
+  if (type === 'sleep') {
+    document.querySelectorAll('[onclick*="sleepType"]').forEach(c => {
+      c.addEventListener('click', function() {
+        const isPast = this.textContent.includes('past');
+        document.getElementById('pastSleepRow').style.display = isPast ? 'block' : 'none';
+        document.getElementById('saveBtn').textContent = isPast ? 'Save & sync ✓' : 'Start sleep timer ✓';
+      });
+    });
+  }
+
+  overlay.classList.add('open');
+}
+
+function selectChip(el, group) {
+  el.closest('.chip-group').querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function closeModalIfOutside(e) {
+  if (e.target === document.getElementById('modalOverlay')) {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+}
+
+function saveEntry() {
+  const type = currentModal;
+  const notes = document.getElementById('entryNotes')?.value || '';
+  const now = new Date();
+
+  let detail = '';
+  let sleepDurMin = 0;
+  let startTimer = false;
+
+  if (type === 'feed') {
+    const ft = document.querySelector('[onclick*="feedType"].selected')?.textContent || 'Breast';
+    const fd = document.querySelector('[onclick*="feedDur"].selected')?.textContent || '10 min';
+    detail = ft + ' · ' + fd;
+  } else if (type === 'sleep') {
+    const st = document.querySelector('[onclick*="sleepType"].selected')?.textContent || 'Start now';
+    if (st.includes('Start')) {
+      startTimer = true;
+      detail = 'Started now';
+    } else {
+      const sd = document.querySelector('[onclick*="sleepDur"].selected')?.textContent || '1 hour';
+      detail = sd;
+      const durMap = {'30 min':30,'1 hour':60,'2 hours':120,'3+ hours':180};
+      sleepDurMin = durMap[sd] || 60;
+    }
+  } else if (type === 'diaper') {
+    detail = document.querySelector('[onclick*="diaperType"].selected')?.textContent || 'Wet';
+  } else if (type === 'pump') {
+    detail = document.querySelector('[onclick*="pumpAmt"].selected')?.textContent || '1–2 oz';
+  }
+
+  const entry = { type, detail, notes, time: now.toISOString(), synced: gcalConnected, sleepDurMin };
+  entries.unshift(entry);
+  localStorage.setItem('babyEntries', JSON.stringify(entries));
+
+  document.getElementById('modalOverlay').classList.remove('open');
+  renderLog();
+  updateStats();
+
+  if (startTimer) startSleepTimer();
+
+  if (gcalConnected) {
+    syncToGcal(entry);
+    showToast('Logged + synced to Calendar ✓');
+  } else {
+    showToast('Logged! Connect Calendar to sync.');
+  }
+}
+
+function startSleepTimer() {
+  sleepStartTime = new Date();
+  document.getElementById('sleepTimer').classList.add('visible');
+  sleepInterval = setInterval(() => {
+    const elapsed = Math.floor((new Date() - sleepStartTime) / 1000);
+    const h = Math.floor(elapsed/3600).toString().padStart(2,'0');
+    const m = Math.floor((elapsed%3600)/60).toString().padStart(2,'0');
+    const s = (elapsed%60).toString().padStart(2,'0');
+    document.getElementById('timerVal').textContent = elapsed >= 3600 ? h+':'+m+':'+s : m+':'+s;
+  }, 1000);
+}
+
+function endSleep() {
+  if (!sleepStartTime) return;
+  const durMin = Math.round((new Date() - sleepStartTime) / 60000);
+  clearInterval(sleepInterval);
+  document.getElementById('sleepTimer').classList.remove('visible');
+  const entry = { type:'sleep', detail: formatDuration(durMin*60000), notes:'', time: sleepStartTime.toISOString(), synced: gcalConnected, sleepDurMin: durMin };
+  entries.unshift(entry);
+  localStorage.setItem('babyEntries', JSON.stringify(entries));
+  sleepStartTime = null;
+  renderLog();
+  updateStats();
+  if (gcalConnected) { syncToGcal(entry); showToast('Sleep logged + synced ✓'); }
+  else showToast('Sleep logged: ' + formatDuration(durMin*60000));
+}
+
+function todayEntries() {
+  const today = new Date().toDateString();
+  return entries.filter(e => new Date(e.time).toDateString() === today);
+}
+
+function renderLog() {
+  const list = document.getElementById('logList');
+  const te = todayEntries();
+  if (!te.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🌟</div><p>No entries yet today.<br>Tap a button above to log!</p></div>';
+    return;
+  }
+  const icons = {feed:'🍼', sleep:'😴', diaper:'👶', pump:'🤱'};
+  const labels = {feed:'Feed', sleep:'Sleep', diaper:'Diaper', pump:'Pump'};
+  list.innerHTML = te.map(e => `
+    <div class="log-entry ${e.synced?'synced':''}">
+      <div class="log-dot dot-${e.type}"></div>
+      <div class="log-info">
+        <div class="log-type">${icons[e.type]} ${labels[e.type]}</div>
+        <div class="log-detail">${e.detail}${e.notes ? ' · '+e.notes : ''}${e.synced ? ' <span style="font-size:10px;color:#2E7D32;">● Cal</span>' : ''}</div>
+      </div>
+      <div class="log-time">${formatTime(new Date(e.time))}</div>
+    </div>
+  `).join('');
+
+  const feeds = te.filter(e=>e.type==='feed');
+  const sleeps = te.filter(e=>e.type==='sleep');
+  const diapers = te.filter(e=>e.type==='diaper');
+  const pumps = te.filter(e=>e.type==='pump');
+  document.getElementById('lastFeed').textContent = feeds.length ? formatTime(new Date(feeds[0].time)) : 'Tap to log';
+  document.getElementById('lastSleep').textContent = sleeps.length ? formatTime(new Date(sleeps[0].time)) : 'Tap to log';
+  document.getElementById('lastDiaper').textContent = diapers.length ? formatTime(new Date(diapers[0].time)) : 'Tap to log';
+  document.getElementById('lastPump').textContent = pumps.length ? formatTime(new Date(pumps[0].time)) : 'Tap to log';
+}
+
+function updateStats() {
+  const te = todayEntries();
+  document.getElementById('feedCount').textContent = te.filter(e=>e.type==='feed').length;
+  document.getElementById('diaperCount').textContent = te.filter(e=>e.type==='diaper').length;
+  const sleepMins = te.filter(e=>e.type==='sleep').reduce((s,e)=>s+(e.sleepDurMin||0),0);
+  document.getElementById('sleepTotal').textContent = sleepMins >= 60 ? Math.floor(sleepMins/60)+'h' : (sleepMins||0)+'m';
+}
+
+function updateInsights() {
+  const te = todayEntries();
+  const feeds = te.filter(e=>e.type==='feed').sort((a,b)=>new Date(a.time)-new Date(b.time));
+  if (feeds.length >= 2) {
+    const gaps = [];
+    for (let i=1;i<feeds.length;i++) gaps.push((new Date(feeds[i].time)-new Date(feeds[i-1].time))/60000);
+    const avg = gaps.reduce((a,b)=>a+b,0)/gaps.length;
+    document.getElementById('avgFeedGap').textContent = formatDuration(avg*60000);
+    const lastFeedTime = new Date(feeds[feeds.length-1].time);
+    const nextFeed = new Date(lastFeedTime.getTime() + avg*60000);
+    document.getElementById('nextFeedPred').textContent = formatTime(nextFeed);
+  } else {
+    document.getElementById('avgFeedGap').textContent = feeds.length === 1 ? '— (need 2+ feeds)' : 'No feeds yet';
+    document.getElementById('nextFeedPred').textContent = feeds.length ? '—' : '—';
+  }
+
+  // Bar chart
+  const hours = Array(8).fill(0);
+  const now = new Date();
+  feeds.forEach(f => {
+    const diff = Math.floor((now - new Date(f.time))/3600000);
+    if (diff < 8) hours[7-diff]++;
+  });
+  const max = Math.max(...hours, 1);
+  const chart = document.getElementById('feedBarChart');
+  const lbls = document.getElementById('feedBarLabels');
+  chart.innerHTML = hours.map((h,i) => `<div class="bar-wrap"><div class="bar ${h===Math.max(...hours)&&h>0?'active':''}" style="height:${Math.max(4,h/max*55)}px;background:var(--accent1)"></div></div>`).join('');
+  lbls.innerHTML = hours.map((_,i) => {
+    const hAgo = 7-i;
+    return `<div class="bar-lbl" style="flex:1">${hAgo===0?'now':'-'+hAgo+'h'}</div>`;
+  }).join('');
+
+  const sleepMins = te.filter(e=>e.type==='sleep').reduce((s,e)=>s+(e.sleepDurMin||0),0);
+  document.getElementById('totalSleepInsight').textContent = Math.floor(sleepMins/60)+'h '+sleepMins%60+'min';
+  document.getElementById('sleepInsightSub').textContent = sleepMins > 120 ? 'Great sleep today!' : 'Keep logging sleep events';
+}
+
+function toggleGcal() {
+  gcalConnected = !gcalConnected;
+  localStorage.setItem('gcalConnected', gcalConnected);
+  updateGcalUI();
+  showToast(gcalConnected ? 'Google Calendar connected! ✓' : 'Calendar disconnected');
+  if (gcalConnected) renderLog();
+}
+
+function updateGcalUI() {
+  const badge = document.getElementById('gcalBadge');
+  const btn = document.getElementById('gcalConnectBtn');
+  const sub = document.getElementById('gcalSettingSub');
+  if (gcalConnected) {
+    badge.className = 'gcal-badge connected';
+    badge.querySelector('#gcalText').textContent = 'Syncing';
+    btn.textContent = 'Connected';
+    btn.classList.add('connected-btn');
+    sub.textContent = 'All events syncing to calendar';
+  } else {
+    badge.className = 'gcal-badge disconnected';
+    badge.querySelector('#gcalText').textContent = 'Sync Calendar';
+    btn.textContent = 'Connect';
+    btn.classList.remove('connected-btn');
+    sub.textContent = 'Log events to calendar';
+  }
+}
+
+function syncToGcal(entry) {
+  const labels = {feed:'Baby feed', sleep:'Baby sleep', diaper:'Diaper change', pump:'Pump session'};
+  console.log('Syncing to Google Calendar:', { summary: labels[entry.type] + ' — ' + entry.detail, start: entry.time });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function exportCSV() {
+  const rows = [['Type','Detail','Time','Notes']];
+  entries.forEach(e => rows.push([e.type, e.detail, new Date(e.time).toLocaleString(), e.notes]));
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'baby-log.csv';
+  a.click();
+  showToast('CSV exported!');
+}
+
+function clearLog() {
+  if (confirm('Clear all of today\'s entries?')) {
+    const today = new Date().toDateString();
+    entries = entries.filter(e => new Date(e.time).toDateString() !== today);
+    localStorage.setItem('babyEntries', JSON.stringify(entries));
+    renderLog(); updateStats();
+    showToast('Today\'s log cleared');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
